@@ -1,5 +1,5 @@
 const { Role, DB } = require('./database/database.js');
-
+var process;
 if (process.argv.length < 5) {
   console.log('Usage: node init.js <name> <email> <password>');
   process.exit(1);
