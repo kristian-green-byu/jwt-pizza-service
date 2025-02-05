@@ -2,8 +2,22 @@ const request = require('supertest');
 const app = require('../../src/service');
 
 const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-const admin = {name: "常用名字", email:"a@jwt.com", password:"admin"}
 var loginRes;
+
+const { Role, DB } = require('../../src/database/database.js');
+
+function randomName() {
+    return Math.random().toString(36).substring(2, 12);
+}
+
+async function createAdminUser() {
+    let user = { password: 'toomanysecrets', roles: [{ role: Role.Admin }] };
+    user.name = randomName();
+    user.email = user.name + '@admin.com';
+
+    user = await DB.addUser(user);
+    return { ...user, password: 'toomanysecrets' };
+}
 
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
     jest.setTimeout(60 * 1000 * 5); // 5 minutes
@@ -20,7 +34,7 @@ test('register', async () => {
     const registerRes = await request(app).post('/api/auth').send(user);
     expect(registerRes.status).toBe(200);
     expect(registerRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
-    const { password, ...userRes } = { ...user, roles: [{ role: 'diner' }] };
+    const userRes = {name: 'pizza diner', email: user.email, roles: [{ role: 'diner' }]}
     expect(registerRes.body.user).toMatchObject(userRes);
 });
 
@@ -33,17 +47,17 @@ test('register incomplete fields', async () => {
 
 test('login', async () => {
     expect(loginRes.status).toBe(200);
-    expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/); 
-    const { password, ...user } = { ...testUser, roles: [{ role: 'diner' }] };
+    expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
+    const user = {name: testUser.name, email: testUser.email, roles: [{ role: 'diner' }]}
     expect(loginRes.body.user).toMatchObject(user);
 });
 
 test('login multiple times updates the token rather than causing SQL error', async () => {
     expect(loginRes.status).toBe(200);
     expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
-    const { password, ...user } = { ...testUser, roles: [{ role: 'diner' }] };
+    const user = {name: testUser.name, email: testUser.email, roles: [{ role: 'diner' }]}
     expect(loginRes.body.user).toMatchObject(user);
-    const loginRes2 = await request(app).put('/api/auth').send(testUser); 
+    const loginRes2 = await request(app).put('/api/auth').send(testUser);
     expect(loginRes2.status).toBe(200);
 });
 
@@ -62,8 +76,9 @@ test('updateUser unauthorized', async () => {
 });
 
 test('updateUser authorized', async () => {
+    const admin = await createAdminUser()
     const loginAdmin = await request(app).put('/api/auth').send(admin);
-    const updateUser = { email: 'a@jwt.com', password: 'admin' };
+    const updateUser = { email: 'update@jwt.com', password: 'update' };
     const updateRes = await request(app).put(`/api/auth/${loginAdmin.body.user.id}`).send(updateUser).set('Authorization', `Bearer ${loginAdmin.body.token}`).set('Content-Type', 'application/json');
     expect(updateRes.status).toBe(200);
 });
