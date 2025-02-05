@@ -10,6 +10,7 @@ var storeObject;
 var id;
 var storeId;
 var normalLoginRes;
+var storeRequest;
 
 function randomName() {
     return Math.random().toString(36).substring(2, 12);
@@ -33,8 +34,9 @@ async function createNormalUser() {
     user.email = user.name + '@diner.com';
 
     user = await DB.addUser(user);
-    return { ...user, password: 'toomanysecrets' };
+    return { ...user, password: 'moresecrets' };
 }
+
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
     jest.setTimeout(60 * 1000 * 5); // 5 minutes
 };
@@ -45,7 +47,7 @@ beforeAll(async () => {
     franchise = { name: randomName(), admins: [{ email: admin.email }] }
     franchiseRes = await request(app).post('/api/franchise').set('Content-Type', 'application/json').set('Authorization', `Bearer ${loginRes.body.token}`).send(franchise);
     id = franchiseRes.body.id;
-    const storeRequest = { franchiseId: id, name: "test" };
+    storeRequest = { franchiseId: id, name: "test" };
     storeRes = await request(app).post(`/api/franchise/${id}/store`).set("Authorization", `Bearer ${loginRes.body.token}`).set('Content-Type', 'application/json').send(storeRequest);
     storeObject = {franchiseId: id, ...storeRequest}
     storeId = storeRes.body.id;
@@ -78,6 +80,12 @@ test("Create a store", async () => {
     expect(res.body).toMatchObject(storeObject);
 });
 
+test("Delete store unauthorized", async () => {
+    const res = await request(app).delete(`/api/franchise/${id}/store/${storeId}`).set("Authorization", `Bearer ${normalLoginRes.body.token}`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toEqual('unable to delete a store');
+});
+
 test("Delete a store", async () => {
     const res = await request(app).delete(`/api/franchise/${id}/store/${storeId}`).set("Authorization", `Bearer ${loginRes.body.token}`);
     expect(res.status).toBe(200);
@@ -92,6 +100,20 @@ test("Delete a franchise", async () => {
 
 test("Create franchise unauthorized", async () => {
     const res = await request(app).post('/api/franchise').set('Content-Type', 'application/json').set('Authorization', `Bearer ${normalLoginRes.body.token}`).send(franchise);
-    expect(res.status).toBe(401);
-    expect(res.body.message).toEqual('unauthorized');
+    expect(res.status).toBe(403);
+    expect(res.body.message).toEqual('unable to create a franchise');
 });
+
+test("Delete franchise unauthorized", async () => {
+    const res = await request(app).delete(`/api/franchise/${id}`).set("Authorization", `Bearer ${normalLoginRes.body.token}`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toEqual('unable to delete a franchise');
+});
+
+test("Create store unauthorized", async () => {
+    const res = await request(app).post(`/api/franchise/${id}/store`).set("Authorization", `Bearer ${normalLoginRes.body.token}`).set('Content-Type', 'application/json').send(storeRequest);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toEqual('unable to create a store');
+});
+
+
