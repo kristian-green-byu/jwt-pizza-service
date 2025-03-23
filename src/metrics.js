@@ -81,7 +81,7 @@ function getCpuUsagePercentage() {
   let totalTick = 0;
 
   cpus.forEach((cpu) => {
-    for (type in cpu.times) {
+    for (let type in cpu.times) {
       totalTick += cpu.times[type];
     }
     totalIdle += cpu.times.idle;
@@ -248,7 +248,7 @@ function sendMetricToGrafana(metrics) {
 
 
 function sendMetricsPeriodically(period) {
-  const timer = setInterval(() => {
+  setInterval(() => {
     try {
       const buf = new MetricBuilder();
       httpMetrics(buf);
