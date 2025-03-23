@@ -5,7 +5,6 @@ const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 
 const orderRouter = express.Router();
-
 orderRouter.endpoints = [
   {
     method: 'GET',

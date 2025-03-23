@@ -4,6 +4,7 @@ const orderRouter = require('./routes/orderRouter.js');
 const franchiseRouter = require('./routes/franchiseRouter.js');
 const version = require('./version.json');
 const config = require('./config.js');
+const { requestTracker, sendMetricsPeriodically } = require('./metrics'); 
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   next();
 });
+app.use(requestTracker);
 
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
@@ -48,5 +50,7 @@ app.use((err, req, res, next) => {
   res.status(err.statusCode ?? 500).json({ message: err.message, stack: err.stack });
   next();
 });
+
+sendMetricsPeriodically(10000);
 
 module.exports = app;

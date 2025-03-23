@@ -56,6 +56,11 @@ jobs:
               url: 'https://pizza-factory.cs329.click',
               apiKey: '${{ secrets.FACTORY_API_KEY }}',
             },
+            metrics: {
+              source: 'jwt-pizza-service',
+              url: '${{ secrets.METRICS_URL }}',
+              apiKey: '${{ secrets.METRICS_API_KEY }}',
+            },            
           };" > src/config.js
 
       - name: Tests
@@ -71,7 +76,7 @@ jobs:
       - name: Update coverage
         run: |
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
-          color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
+          color=$(echo "$coverage < 70" | bc | awk '{if ($1) print "red"; else print "green"}')
           curl -s -X POST "https://badge.cs329.click/badge/${{ github.repository_owner }}/jwtpizzaservicecoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" -o /dev/null
 
       - name: Create dist

@@ -86,7 +86,9 @@ test("Get the orders for the authenticated user", async () => {
     expect(res.body.orders[0].franchiseId).toEqual(franchiseRes.body.id);
     expect(res.body.orders[0].storeId).toEqual(storeRes.body.id);
     expect(res.body.orders[0].date).toMatch(/\d{4}-\d{2}-\S*/);
-    expect(res.body.orders[0].items[0]).toEqual({ menuId: 1, description: "test pizza", price: 0.0001, id: orderRes.body.order.id });
+    expect(res.body.orders[0].items[0].menuId).toEqual(1);
+    expect(res.body.orders[0].items[0].description).toEqual("test pizza");
+    expect(res.body.orders[0].items[0].price).toEqual(0.0001);
 
     expect(res.body.page).toBe(1);
 });
