@@ -3,8 +3,19 @@ const jwt = require('jsonwebtoken');
 const config = require('../config.js');
 const { asyncHandler } = require('../endpointHelper.js');
 const { DB, Role } = require('../database/database.js');
+const rateLimit = require('express-rate-limit');
 
 const authRouter = express.Router();
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: {
+    message: 'Too many authentication attempts. Please try again later.',
+  },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 authRouter.endpoints = [
   {
@@ -65,11 +76,15 @@ authRouter.authenticateToken = (req, res, next) => {
 
 // register
 authRouter.post(
-  '/',
+  '/', authLimiter,
   asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'name, email, and password are required' });
+    }
+    const unique = await DB.checkEmailUnique(email);
+    if (!unique){
+      return res.status(400).json({ message: 'Unable to register. If an account with this email already exists, you may want to log in or update your password.'}); 
     }
     const user = await DB.addUser({ name, email, password, roles: [{ role: Role.Diner }] });
     const auth = await setAuth(user);
@@ -79,7 +94,7 @@ authRouter.post(
 
 // login
 authRouter.put(
-  '/',
+  '/', authLimiter,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const user = await DB.getUser(email, password);

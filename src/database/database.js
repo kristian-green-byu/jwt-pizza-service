@@ -65,6 +65,20 @@ class DB {
     }
   }
 
+  async checkEmailUnique(email) {
+    const connection = await this.getConnection();
+    try {
+      const userResult = await this.query(connection, `SELECT name, email FROM user WHERE email=?`, [email]);
+      const user = userResult[0];
+      if (!user){
+        return true;
+      }
+      return false;
+    } finally {
+      connection.end();
+    }
+  }
+
   async getUser(email, password) {
     const connection = await this.getConnection();
     try {
@@ -88,23 +102,28 @@ class DB {
   async updateUser(userId, email, password) {
     const connection = await this.getConnection();
     try {
-      const params = [];
+      const fields = [];
+      const values = [];
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
-        params.push(`password='${hashedPassword}'`);
+        fields.push(`password=?`);
+        values.push(hashedPassword);
       }
       if (email) {
-        params.push(`email='${email}'`);
+        fields.push(`email=?`);
+        values.push(email);
       }
-      if (params.length > 0) {
-        const query = `UPDATE user SET ${params.join(', ')} WHERE id=${userId}`;
-        await this.query(connection, query);
+      if (fields.length > 0) {
+        values.push(userId);
+        const query = `UPDATE user SET ${fields.join(', ')} WHERE id=?`;
+        await this.query(connection, query, values);
       }
       return this.getUser(email, password);
     } finally {
       connection.end();
     }
   }
+  
 
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
@@ -237,7 +256,8 @@ class DB {
       }
 
       franchiseIds = franchiseIds.map((v) => v.objectId);
-      const franchises = await this.query(connection, `SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(',')})`);
+      const placeholders = franchiseIds.map(() => '?').join(',');
+      const franchises = await this.query(connection, `SELECT id, name FROM franchise WHERE id in (${placeholders})`, franchiseIds);
       for (const franchise of franchises) {
         await this.getFranchise(franchise);
       }
